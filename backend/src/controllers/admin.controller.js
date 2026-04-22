@@ -39,11 +39,22 @@ export const getUsers = asyncHandler(async (req, res) => {
 
   const users = await User.find(filter)
     .select('-password')
+    .populate({
+      path: 'membership',
+      select: 'membershipNumber status isActive durationMonths price endDate',
+      match: { status: 'active', isActive: true },
+    })
     .sort({ createdAt: -1 });
+
+  const normalizedUsers = users.map((user) => {
+    const record = user.toObject();
+    record.hasActiveMembership = Boolean(record.membership);
+    return record;
+  });
 
   res
     .status(200)
-    .json(new ApiResponse(200, users, 'Users fetched successfully'));
+    .json(new ApiResponse(200, normalizedUsers, 'Users fetched successfully'));
 });
 
 export const toggleUserStatus = asyncHandler(async (req, res) => {
@@ -102,7 +113,7 @@ export const updateVendorRequestStatus = asyncHandler(async (req, res) => {
 export const cancelUserMembership = asyncHandler(async (req, res) => {
   const userId = req.params.userId;
 
-  const user = await User.findById(userId).populate('membership');
+  const user = await User.findById(userId);
 
   if (!user) {
     throw new ApiError(404, 'User not found');
@@ -115,20 +126,21 @@ export const cancelUserMembership = asyncHandler(async (req, res) => {
     );
   }
 
-  const membershipId = user.membership._id;
+  // Membership plans are shared records. Only clear user assignment.
+  const membership = await Membership.findById(user.membership);
 
-  // Delete membership from DB
-  await Membership.findByIdAndDelete(membershipId);
-
-  // Remove reference from user
   user.membership = null;
   await user.save();
+
+  const message = membership
+    ? 'User membership cancelled successfully'
+    : 'Stale membership reference cleared successfully';
 
   res.status(200).json(
     new ApiResponse(
       200,
       { user },
-      'User membership cancelled and deleted successfully'
+      message
     )
   );
 });

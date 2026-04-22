@@ -122,7 +122,11 @@ function UserManagement() {
             </thead>
 
             <tbody>
-              {visibleItems.map((item) => (
+              {visibleItems.map((item) => {
+                const hasActiveMembership =
+                  item.hasActiveMembership ?? Boolean(item.membership)
+
+                return (
                 <tr
                   key={item._id}
                   className="border-t border-slate-200"
@@ -135,7 +139,7 @@ function UserManagement() {
 
                   {/* Membership */}
                   <td className="px-4 py-3">
-                    {item.membership ? (
+                    {hasActiveMembership ? (
                       <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
                         Active
                       </span>
@@ -169,7 +173,7 @@ function UserManagement() {
                       {item.isActive ? 'Block' : 'Activate'}
                     </button>
 
-                    {item.membership && (
+                    {hasActiveMembership && (
                       <button
                         type="button"
                         onClick={() =>
@@ -182,7 +186,8 @@ function UserManagement() {
                     )}
                   </td>
                 </tr>
-              ))}
+                )
+              })}
 
               {visibleItems.length === 0 && (
                 <tr>
